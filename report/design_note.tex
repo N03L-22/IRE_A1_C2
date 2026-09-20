@@ -484,6 +484,12 @@ queued for a real-scale run; $K$ also moved from 150 to 200, the top of the rang
 no other change to what BM25+semantic fusion retrieves. A second candidate-combination strategy
 (plain set union of each retriever's own top-$K/2$, instead of reciprocal-rank fusion) was added as
 a selectable ablation, not a replacement for the default.
+\item \textbf{EB-NeRD's submission carries the same fix as \S\ref{sec:index-bug}, not yet scored.}
+The BM25-index-tier bug was dataset-agnostic (it lives in the shared submission code, not
+MIND-specific logic), and EB-NeRD's small-train-tier coverage of its own large test corpus is even
+worse than MIND's (1.5\% vs.\ 11.4\%) --- so the same fix very plausibly matters more here. The
+submission has been regenerated but not yet uploaded/scored as of this note; its leaderboard result
+should be recorded once available, following the same v-numbered pattern as \S\ref{sec:leaderboard}.
 \end{itemize}
 
 \end{document}
