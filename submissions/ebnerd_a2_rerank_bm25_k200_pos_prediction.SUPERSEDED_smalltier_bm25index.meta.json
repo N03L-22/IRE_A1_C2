@@ -5,9 +5,9 @@
   "train_limit": 60000,
   "test_tier": "testset",
   "dev_limit": null,
-  "generated_at": "2026-09-20T15:50:39",
+  "generated_at": "2026-09-20T03:18:02",
   "lines": 13336711,
   "cold_slates": 0,
-  "seconds": 8510.9,
+  "seconds": 8525.5,
   "bytes": 523863118
 }

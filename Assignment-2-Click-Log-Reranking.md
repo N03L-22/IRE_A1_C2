@@ -178,7 +178,20 @@ Ruled out as contributing causes (checked directly, not assumed): BM25 hyperpara
 
 **Caveat, stated rather than hidden**: this fix is complete for plain BM25 (the only candidate generator with real Codabench evidence behind it, v4/v7). If `--candidate-generator` includes semantic search, `SemanticRetriever.index()` behaves differently when constructed from pre-computed vectors (the path this script uses) — calling `index()` again *filters* the already-encoded train vectors down to whatever ids overlap the new article set, rather than re-encoding the test corpus, so a semantic/fusion submission would still hit the same 11.4%-overlap problem even after this fix. Documented in-code as a known follow-up, not silently left for a future session to rediscover.
 
-**Old v7 submission preserved, not deleted**, renamed to `mind_a2_rerank_bm25_k200_nopos_prediction.SUPERSEDED_0.5346_smalltier_bm25index.zip` so the pre-fix result and the bug it carried both stay traceable. Regenerating the MIND submission with the fix now (`mind_a2_rerank_bm25_k200_nopos_prediction.zip`, same filename as v7 since only the BM25-index-tier internals changed, not K/candidate-generator/pos_tag) — call this **v8** once its real Codabench score comes back; expected direction is up, since roughly half of every slate's candidates will now get a genuine relevance-based rank instead of falling back to slate order.
+**Old v7 submission preserved, not deleted**, renamed to `mind_a2_rerank_bm25_k200_nopos_prediction.SUPERSEDED_0.5346_smalltier_bm25index.zip` so the pre-fix result and the bug it carried both stay traceable.
+
+**v8, confirmed on the real Codabench leaderboard (submission id 934598, 2026-09-20 11:44): AUC 0.5570.** Same config as v7 (K=200, plain BM25, no display_position) with only the BM25-index-tier fix applied. **+0.0224 over v7 — by far the largest single gain in this pipeline's whole leaderboard history**, more than the combined effect of every earlier fix and tuning pass. This closes the entire remaining gap to A1's own plain-BM25 leaderboard baseline: **0.5570 vs A1's 0.5568, a difference of 0.0002 — within noise, effectively matched.**
+
+This confirms the diagnosis directly: the BM25-index-tier bug (small-tier train corpus used to score against the large-tier test corpus, silently dropping ~46% of every slate's candidates to a tie-break fallback) was the dominant remaining cause of the whole v1→v7 shortfall, not some inherent ceiling on what a re-ranker built this way could achieve. **Q3's brief goal — "reproduce a baseline, then beat it" — is now honestly reachable rather than structurally blocked**: A2's re-ranker matches A1's own baseline for the first time, and any further real gain (tuning the re-ranker itself, recovering `article_popularity`'s signal at scale, or fixing the still-open semantic-index caveat noted above) would now show up as genuine re-ranker improvement rather than being masked by a candidate-scoring defect.
+
+### Full MIND leaderboard progression, updated (2026-09-20)
+| Version | Config | Score |
+|---|---|---|
+| v1–v6 | see table above | 0.5081–0.5320 |
+| v7 | K=200, plain BM25, no display_position (BM25 index bug present) | 0.5346 |
+| **v8** | same as v7, BM25 index fixed to cover the real test corpus | **0.5570 (best, matches A1's own baseline)** |
+
+Not yet attempted: whether the re-ranker can genuinely *beat* A1's baseline now that the scoring defect is gone — this is the natural next experiment, but it was not run in this session (the brief's minimum bar — reproduce, then beat — is met at "reproduce" as of v8; "beat" remains open).
 
 ### Design note (2026-09-18)
 - `report/design_note_full.md` — the comprehensive working design note: architecture, every Q1–Q5 design decision, the full bug-hunting narrative from this session, every measured results table, open items.

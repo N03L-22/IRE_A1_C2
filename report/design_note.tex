@@ -50,13 +50,14 @@ harness, its statistical test for ``is this improvement real.''
 
 The re-ranker's improvement is checked two ways: offline, against held-out labels (Q3), and for
 real, on the Codabench leaderboard (Q9's ``leaderboard as a check''). The two disagreed several
-times during development, and closing each gap is most of what this note reports: four real bugs
-found only by running the full pipeline on real data, and a fifth problem --- the model was
-trained for one task and graded on a different, harder one --- found only by comparing a submitted
-score against Assignment 1's own saved leaderboard history. \textbf{Best
-result on MIND after all fixes: leaderboard AUC 0.5346}, up from 0.5124 on the first (buggy)
-attempt, but still short of A1's own plain-BM25 leaderboard score of 0.5568 --- stated here
-plainly rather than only reporting the better-looking offline numbers.
+times during development, and closing each gap is most of what this note reports: six real bugs
+found only by running the full pipeline on real data and comparing submitted scores against
+Assignment 1's own saved leaderboard history, from label leaks to a train/serve candidate-set
+mismatch to a submission-time BM25 index built on the wrong corpus tier. \textbf{Best
+result on MIND after all fixes: leaderboard AUC 0.5570}, up from 0.5124 on the first (buggy)
+attempt and matching A1's own plain-BM25 leaderboard score of 0.5568 to within 0.0002 --- stated
+here plainly, including how much of that gap closure came from one specific late fix, rather than
+only reporting the better-looking offline numbers.
 \end{abstract}
 
 \tableofcontents
@@ -382,7 +383,8 @@ v3 & trained on the real slate instead; added a ``position in the real slate'' f
 v4 & same as v3, position feature removed & 0.5320 \\
 v5 & same as v4, fusion candidates, semantic settings left at defaults & 0.5112 (worse) \\
 v6 & same as v5, using A1's own already-tuned semantic settings & 0.5309 (matches v4) \\
-v7 & same as v4, $K$ raised 150 $\to$ 200 & \textbf{0.5346 --- best result} \\
+v7 & same as v4, $K$ raised 150 $\to$ 200 & 0.5346 \\
+v8 & same as v7, a BM25-index-tier bug fixed (\S\ref{sec:index-bug}) & \textbf{0.5570 --- best result} \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -395,15 +397,44 @@ settings specifically for MIND rather than using the library defaults; v5 used t
 defaults. Redoing it with A1's actual tuned values (v6) closed almost the entire gap, confirming
 the untuned settings, not fusion, were the problem. Attempt v7 changed only $K$ (150 $\to$ 200,
 the top of Q2.1's own stated range) with everything else held at v4's config, and produced the
-first real gain since v4 itself.
+first real gain since v4 itself. Attempt v8 fixed a structural bug in how the submission indexed
+BM25 (below) and produced, by a wide margin, the largest single gain in this whole progression.
+
+\subsection{A sixth bug: BM25 indexed the wrong corpus tier at submission time}
+\label{sec:index-bug}
+
+After v7, the gap to A1's baseline (0.0222) was narrower but still open, and every previously
+found cause had already been fixed or tuned. Asking directly ``what else could still differ
+between A1's plain-BM25 submission and A2's re-ranked-BM25 submission, given both should be
+scoring the same BM25 order on the same real slates'' turned up one more structural difference.
+
+\texttt{predict\_submission.py} builds its BM25 index once, from the small TRAIN tier (65,238
+MIND articles), to build the re-ranker's training rows. That same index was then reused
+\emph{unchanged} all the way through to scoring the real test set: the script swapped in the
+large-tier test corpus (120,961 articles) for feature lookups (category, freshness, popularity),
+but never rebuilt the candidate generator's own BM25 index on it. \texttt{BM25Retriever}'s
+\texttt{score\_subset} is explicit that candidates absent from its index are simply missing from
+the returned scores --- and because the small-tier corpus covers only \textbf{11.4\%} of the real
+test corpus (the same coverage gap already used to justify excluding \texttt{article\_popularity},
+\S\ref{sec:submission}), roughly \textbf{46\% of every real test slate's candidates} could never
+receive a genuine BM25 score and fell back to arbitrary slate order instead. A1's own submission
+script never hits this: it always indexes and scores on the same tier.
+
+\textbf{Fix:} re-index the candidate generator on the test corpus after loading it, exactly once,
+right alongside the existing article-dict swap. \texttt{BM25Retriever.index()} fully rebuilds its
+internal state on each call, so this is safe and adds only a few seconds. Verified on a
+dev-limited smoke run before the full regeneration, then confirmed on the real leaderboard: v8
+scored \textbf{0.5570}, a \textbf{+0.0224} gain over v7 --- more than every earlier fix and tuning
+pass combined.
 
 \subsection{The honest bottom line}
 
-Even the best attempt (v7, 0.5346) has not yet beaten A1's own plain-BM25 leaderboard score
-(0.5568), though it has closed most of the gap from v1 (was 0.0444 short, now 0.0222 short). The
-brief asks to ``reproduce a baseline then beat it''; as of this note that has not fully happened
-on MIND's real leaderboard, even though the offline (slate-based) number on its own looks
-reasonable.
+\textbf{v8 (0.5570) matches A1's own plain-BM25 leaderboard score (0.5568) to within 0.0002 ---
+effectively the same, and within noise.} The brief asks to ``reproduce a baseline then beat it'';
+as of v8, the \emph{reproduce} half is genuinely met for the first time, closing a gap that stood
+at 0.0444 after v1. \emph{Beating} A1's baseline outright was not attempted in this session (the
+scoring defect masked whatever headroom the re-ranker itself has, so any earlier attempt to beat
+the baseline would have been fighting the wrong problem) and remains the natural next step.
 
 \section{Codabench submission}
 \label{sec:submission}
@@ -421,18 +452,21 @@ generated file.
 
 The first submission scored below A1's own plain-BM25 baseline, and following up on that gap
 rather than accepting a plausible-looking offline number is what led to \S\ref{sec:leaderboard}'s
-finding. Every subsequent attempt (v2--v7) was regenerated and resubmitted to test one specific
+finding. Every subsequent attempt (v2--v8) was regenerated and resubmitted to test one specific
 hypothesis.
 
 \section{What's still open}
 \label{sec:open}
 
 \begin{itemize}
-\item \textbf{The MIND leaderboard gap is not closed.} Best result (v7, $K{=}200$) is 0.5346, still
-short of A1's plain-BM25 result of 0.5568. Worth trying next: tuning the re-ranker's own settings
-directly (boosting rounds, minimum data per split) rather than only the candidate generator; and
-reconsidering whether excluding article popularity entirely was too blunt a fix --- a smoothed or
-capped version might recover some signal without the coverage problem that caused its removal.
+\item \textbf{The MIND leaderboard gap is closed, but not surpassed.} Best result (v8) is 0.5570,
+matching A1's plain-BM25 result of 0.5568 to within 0.0002. \emph{Reproducing} the baseline is
+done; \emph{beating} it (the brief's fuller ask) has not been attempted now that the scoring
+defect that masked the re-ranker's real headroom is fixed. Worth trying next: tuning the
+re-ranker's own settings directly (boosting rounds, minimum data per split) rather than only the
+candidate generator; and reconsidering whether excluding article popularity entirely was too blunt
+a fix --- a smoothed or capped version might recover some signal without the coverage problem that
+caused its removal.
 \item \textbf{Article popularity is fundamentally limited by training on the small data tier.}
 Properly fixing it needs training on the full large tier (15M+ impressions, downloaded but not yet
 extracted) --- a substantially longer run than anything completed here.
