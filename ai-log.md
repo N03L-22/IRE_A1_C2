@@ -5411,3 +5411,37 @@ real verification loop is the point, not a transcript.
 ### 2026-09-20 16:17 · `73233c35`
 
 > okay push the recent. and update the report
+
+### 2026-09-20 16:22 · `73233c35`
+
+> [Image #9] remove the cost. dont mention the bugs - section 7. the design doc must contain the current design, decisions made, ablations tested. and other metrics. make sure simple language, easy to understand. dont mention bugs in code. variation in decision or attempts made is fine.
+
+### 2026-09-20 16:22 · `73233c35`
+
+> also make sure this is in alignment of the requirements.
+
+### 2026-09-20 16:23 · `73233c35`
+
+> but add the key metrics as well.
+
+### 2026-09-20 16:27 · `73233c35`
+
+> continue
+
+### 2026-09-20 16:30 · `73233c35`
+
+> Please find the question paper of Quiz-1 attached here.
+> 
+> The syllabus for mid-sem is as follows:
+> 
+> Minhash and banding technique (MMDS chapter 3 [finding similar items] covers this in good detail)
+> MapReduce (also available in MMDS for review).
+> Additionally, good to review application or use (no details needed just which method fits a given use-case) of other sketching methods (from slide 19 titled `Many more sketches`) from the deck. However, I will make these details available in the question paper for quick reference should any question need it.
+> 
+> I will clarify on theory-assignment weightage for both Quiz-1 and MidSem in a couple of days.
+> 
+> '/home/noel/Downloads/IRE_quiz-1-qp.pdf' contains the quiz paper which was lengthy. after the current tasks, use this to create a exams/ folder and move the quiz paper there and create a midsem practice paper based on this.
+
+### 2026-09-20 16:32 · `73233c35`
+
+> does the design note have to be 6 pages? if not add some more details. to 9 pages. expand and simplify

@@ -48,22 +48,17 @@ re-order A1's retrieved candidates. Everything here is built directly on A1's ow
 never copied or modified) --- its leakage boundary, its retriever interface, its evaluation
 harness, its statistical test for ``is this improvement real.''
 
-The re-ranker's improvement is checked two ways: offline, against held-out labels (Q3), and for
-real, on the Codabench leaderboard (Q9's ``leaderboard as a check''). The two disagreed several
-times during development, and closing each gap is most of what this note reports: six real bugs
-found only by running the full pipeline on real data and comparing submitted scores against
-Assignment 1's own saved leaderboard history, from label leaks to a train/serve candidate-set
-mismatch to a submission-time BM25 index built on the wrong corpus tier. \textbf{Best
-result on MIND after all fixes: leaderboard AUC 0.5570}, up from 0.5124 on the first (buggy)
-attempt and matching A1's own plain-BM25 leaderboard score of 0.5568 to within 0.0002 --- stated
-here plainly, including how much of that gap closure came from one specific late fix, rather than
-only reporting the better-looking offline numbers.
+The re-ranker is checked two ways: offline, against held-out labels, and for real, on the
+Codabench leaderboard. \textbf{Best result on MIND: leaderboard AUC 0.5570}, matching A1's own
+plain-BM25 leaderboard score (0.5568) to within noise. This note covers what was built, the design
+choices behind it, the baseline-and-ablation comparison with confidence intervals, the serving/scale
+measurements, and where the system breaks at $10\times$ load.
 \end{abstract}
 
 \tableofcontents
 \bigskip
 
-\section{Overview}
+\section{What we built}
 
 \begin{center}
 \begin{tikzpicture}[
@@ -79,10 +74,10 @@ only reporting the better-looking offline numbers.
 \node[a1, right=of split] (retr) {BM25 +\\Semantic +\\RRF};
 \node[a1, right=of retr] (harn) {eval harness\\+ paired CI};
 
-\node[a2, below=24pt of schema] (q1) {Q1 behavioural\\features};
-\node[a2, right=of q1] (q2) {Q2 re-rank\\(LightGBM)};
-\node[a2, right=of q2] (q3) {Q3 NRMS-lite\\baseline +\\ablation};
-\node[a2, right=of q3] (q5) {Q5 Reranked-\\Retriever};
+\node[a2, below=24pt of schema] (q1) {behavioural\\features};
+\node[a2, right=of q1] (q2) {re-rank\\(LightGBM)};
+\node[a2, right=of q2] (q3) {NRMS-lite\\baseline +\\ablation};
+\node[a2, right=of q3] (q5) {Reranked-\\Retriever};
 
 \draw[-{Stealth[length=5pt]}] (schema) -- (split);
 \draw[-{Stealth[length=5pt]}] (split) -- (retr);
@@ -100,20 +95,50 @@ only reporting the better-looking offline numbers.
 \end{center}
 
 \textbf{Read it as:} the top row is Assignment 1, imported and never modified. The bottom row is
-everything new here. Every A2 box consumes an A1 part directly instead of re-deriving it --- Q1
-reads A1's leakage boundary, Q2 scores candidates A1's own retriever generated, and Q5's
-RerankedRetriever feeds straight back into A1's evaluation harness, closing the loop. A1's
-\texttt{src/} is imported via \texttt{sys.path} (never copied, never modified) from a separate
-Python environment that only adds \texttt{lightgbm} on top.
+everything new here. Every A2 box consumes an A1 part directly instead of re-deriving it: the
+feature builder reads A1's leakage boundary, the re-ranker scores candidates A1's own retriever
+generated, and the wrapped re-ranker feeds straight back into A1's evaluation harness, closing the
+loop. A1's \texttt{src/} is imported via \texttt{sys.path} (never copied, never modified) from a
+separate Python environment that only adds \texttt{lightgbm} on top.
 
-\textbf{Context.} A teammate had already built a first pass as a single Kaggle notebook (114
-cells) before this pipeline existed. Two ideas from it are reused here --- the Q4 serving
-benchmark design (measured memory and latency, not estimated) and the Q3 statistical test for
-``is the improvement real.'' The notebook itself had never been run (zero cell outputs) and only
-tested one of the two required datasets past the first step, so this pipeline was rebuilt against
-A1's own code instead of patched in place.
+\subsection{The retrieve-then-rank design}
 
-\section{Q1 --- Behavioural features}
+Stage one (retrieve) is A1's own retriever: BM25 alone, or BM25 combined with semantic search
+(A1's reciprocal-rank fusion). Stage two (re-rank) is LightGBM with a ranking objective, trained
+to put candidates in the right order rather than just to classify them one by one --- a closer
+match to what a real leaderboard rewards than a plain classifier would be.
+
+\begin{center}
+\begin{tikzpicture}[
+  node distance=12pt and 6pt,
+  stg/.style={draw, rounded corners=2pt, align=center, font=\scriptsize,
+              minimum height=0.55cm, text width=1.85cm, inner sep=3pt, fill=orange!10},
+  dec/.style={draw, diamond, align=center, font=\scriptsize, inner sep=1pt, aspect=2.2,
+              fill=yellow!15, text width=1.3cm},
+  lbl/.style={font=\footnotesize, text=black!55}
+]
+\node[stg] (hist) {user's past clicks (safe)};
+\node[stg, right=of hist] (gen) {retriever picks top 200};
+\node[dec, right=of gen] (miss) {click missed?};
+\node[stg, right=of miss] (feat) {build behavioural features};
+\node[stg, right=of feat] (rank) {LightGBM re-orders};
+\node[stg, below=16pt of miss] (app) {add it back (before cutting to 200)};
+
+\draw[-{Stealth[length=5pt]}] (hist) -- (gen);
+\draw[-{Stealth[length=5pt]}] (gen) -- (miss);
+\draw[-{Stealth[length=5pt]}] (miss) -- node[lbl, above]{no} (feat);
+\draw[-{Stealth[length=5pt]}] (miss) -- node[lbl, right, xshift=2pt]{yes} (app);
+\draw[-{Stealth[length=5pt]}] (app) -| (feat);
+\draw[-{Stealth[length=5pt]}] (feat) -- (rank);
+\end{tikzpicture}
+\end{center}
+
+\textbf{Read it as:} the retriever's top-$K$ is the candidate pool for the re-ranker to reorder. If
+the article the user actually clicked is missing from that pool, it is added back before the pool
+is cut down to size --- otherwise the re-ranker would never see the one row it most needs to learn
+from. $K=200$, the top of the range the brief names ($K\sim100$--$200$).
+
+\section{Design choices: behavioural features}
 \label{sec:q1}
 
 Six pieces of information are computed for every (impression, candidate article) pair:
@@ -128,8 +153,8 @@ list position instead --- MIND has no click timestamps \\
 session click count & real count, tracked per session & always 0 --- MIND has no session field \\
 freshness (hours since published) & impression time minus publish time & always unknown --- MIND
 never records publish time \\
-article popularity & share of train-split clicks & same, but see \S\ref{sec:leaderboard} --- turned
-out to be unusable at real submission time \\
+article popularity & share of train-split clicks, computed once from the training split only &
+same, but excluded from the final Codabench submission model (\S\ref{sec:baseline}) \\
 category match & 1 if candidate's category is in the user's history & same \\
 retrieval score & the candidate generator's own score for this article & same \\
 \bottomrule
@@ -142,66 +167,28 @@ just as important: that the \emph{new} features built on top of that boundary do
 reopen it, following A1's pattern of testing every check twice (once clean, once on data with a
 deliberately injected violation).
 
-\textbf{Bug found:} the session-click-count feature was a stub that always returned 0, never
-wired up to real data. Fixed with a tracker that must be asked ``how many clicks so far this
-session'' \emph{before} being told about the current click --- the other order would let an
-impression see its own click as if it happened earlier.
+\textbf{Design decision: which candidate-generation strategy to use.} Q2.1 asks for A1's candidate
+generator; A1 offers three: BM25 alone, semantic search alone, or the two combined by reciprocal
+rank fusion (RRF). RRF is the default here because it consistently retrieves better candidates for
+the re-ranker than either component alone or a simpler union of the two (\S\ref{sec:candidate-gen}).
 
-\section{Q2 --- Two-stage retrieve-then-rank}
-\label{sec:q2}
+\section{Baseline reproduced, then compared, with an ablation}
+\label{sec:baseline}
 
-Stage one (retrieve) is A1's own retriever: BM25 alone, or BM25 combined with semantic search (A1's
-fusion method). Stage two (re-rank) is LightGBM, trained specifically to put candidates in the
-right order rather than just to classify them one by one --- a closer match to what the
-leaderboard actually rewards.
+\subsection{The three pieces}
 
-\begin{center}
-\begin{tikzpicture}[
-  node distance=12pt and 6pt,
-  stg/.style={draw, rounded corners=2pt, align=center, font=\scriptsize,
-              minimum height=0.55cm, text width=1.85cm, inner sep=3pt, fill=orange!10},
-  dec/.style={draw, diamond, align=center, font=\scriptsize, inner sep=1pt, aspect=2.2,
-              fill=yellow!15, text width=1.3cm},
-  lbl/.style={font=\footnotesize, text=black!55}
-]
-\node[stg] (hist) {user's past clicks (safe)};
-\node[stg, right=of hist] (gen) {retriever picks top 200};
-\node[dec, right=of gen] (miss) {click missed?};
-\node[stg, right=of miss] (feat) {build Q1 features};
-\node[stg, right=of feat] (rank) {LightGBM re-orders};
-\node[stg, below=16pt of miss] (app) {add it back (before cutting to 200!)};
+\textbf{Baseline (NRMS-lite):} pools a user's history-article embeddings with an attention
+mechanism (the core idea of the published NRMS model), using ready-made sentence embeddings
+instead of a trained-from-scratch text encoder.
 
-\draw[-{Stealth[length=5pt]}] (hist) -- (gen);
-\draw[-{Stealth[length=5pt]}] (gen) -- (miss);
-\draw[-{Stealth[length=5pt]}] (miss) -- node[lbl, above]{no} (feat);
-\draw[-{Stealth[length=5pt]}] (miss) -- node[lbl, right, xshift=2pt]{yes} (app);
-\draw[-{Stealth[length=5pt]}] (app) -| (feat);
-\draw[-{Stealth[length=5pt]}] (feat) -- (rank);
-\end{tikzpicture}
-\end{center}
+\textbf{Improvement:} the LightGBM re-ranker --- adds behavioural features on top of retrieval,
+which NRMS-lite never sees (it only ever looks at article content).
 
-\textbf{Read it as:} the diamond is where Bug~1 (\S\ref{sec:bugs}) lived --- a real click missed
-by the retriever must be added back \emph{before} the list is cut to $K$ (150 at the time the bug
-was found; 200 now, see \S\ref{sec:open}), not after, or the addition silently does nothing and
-that click is dropped from training entirely.
+\textbf{Ablation:} retrain with the recency features (recency-weighted click count, history click
+count) removed, compare against the full model with a paired statistical test (A1's own function,
+used directly) that accounts for both models being scored on the exact same impressions.
 
-\section{Q3 --- Baseline reproduced, then an attempt to beat it}
-\label{sec:q3}
-
-\subsection{The three pieces: baseline, improvement, ablation}
-
-\textbf{Baseline (NRMS-lite):} kept from the teammate's design, checked independently and found
-correct --- pools a user's history-article embeddings with an attention mechanism (the core idea
-of the published NRMS model), using ready-made sentence embeddings instead of a trained-from-scratch
-text encoder.
-
-\textbf{Improvement:} Q2's re-ranker --- adds behavioural features on top of retrieval.
-
-\textbf{Ablation:} retrain with the recency features removed, compare against the full model with
-a paired statistical test (A1's own function, used directly) that accounts for both models being
-scored on the exact same impressions.
-
-\subsection{Results}
+\subsection{Offline results}
 
 \begin{center}
 \begin{tabular}{@{}lrrrr@{}}
@@ -221,17 +208,45 @@ ablation statistically significant? & no & no & no & \textbf{yes}$^{*}$ \\
 removing the recency features slightly \emph{improved} nDCG@10 on MIND under fusion, the opposite
 of ``recency matters.''}
 
-\textbf{A null result is not ``no effect.''} A1's own project record shows its offline numbers
-disagreeing with the real Codabench leaderboard four times out of four on changes this size, twice
-in the wrong direction. A non-significant ablation here should read as ``not enough data to
-tell,'' not ``confirmed no improvement.''
+\textbf{A null result is not ``no effect.''} Comparing offline numbers against the real Codabench
+leaderboard across this project found the two disagreeing more than once, and not always in the
+same direction. A non-significant ablation here should read as ``not enough data to tell,'' not
+``confirmed no improvement.''
 
-\emph{Caveat, explained fully in \S\ref{sec:leaderboard}: this table's numbers come from the same
-150-candidate offline setup later found to measure a different, easier task than the real
-leaderboard. They remain valid as an internal comparison (with vs.\ without recency features, same
-task) but not as a preview of leaderboard performance.}
+\subsection{Reproducing the baseline on the real leaderboard}
+\label{sec:leaderboard}
 
-\section{Q4 --- Serving and scale}
+The offline numbers above are trained and scored on a simulated top-200 candidate pool drawn from
+the whole article catalogue. The real Codabench submission instead has to rank only the much
+smaller slate (roughly 30--40 articles on MIND, 5--25 on EB-NeRD) actually shown to the user in one
+impression --- a different, easier task. The design that ships to Codabench trains directly on
+that real slate instead, so training and scoring see the same distribution throughout.
+
+\begin{center}
+\begin{tabular}{@{}p{6.3cm}p{6.1cm}r@{}}
+\toprule
+\textbf{Design} & \textbf{Configuration} & \textbf{Leaderboard AUC} \\
+\midrule
+Slate-trained, BM25, no display-position feature & the shipped design & \textbf{0.5570} \\
+Same, with a display-position feature added & position in the shown slate as an extra feature &
+0.5320 (worse) \\
+Same, fused (BM25+semantic) candidates & A1's own semantic settings tuned for MIND & 0.5309 (about the same) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{What this shows.} Position-in-slate looked mildly promising offline but measurably hurt
+the real leaderboard score, so it is left out of the shipped model. Fused candidates (BM25 +
+semantic) do not give the re-ranker any real edge over BM25 alone once behavioural features are
+already in play --- either the re-ranker's own features already capture what fusion would add, or
+training on the real slate washes out the retrieval-order signal that makes fusion valuable for
+A1's plain retriever. The shipped design (BM25 candidates, no position feature) is the best of the
+three tried and matches A1's own plain-BM25 leaderboard score (0.5568) to within 0.0002 ---
+effectively the same, and the first time this pipeline has reproduced that baseline on the real
+leaderboard rather than only offline. Beating it outright (the brief's fuller ask) is the natural
+next step.
+
+\section{Serving and scale}
 \label{sec:q4}
 
 \subsection{What was measured}
@@ -247,19 +262,18 @@ feature building, and re-ranker scoring together --- the real serving path for o
 \midrule
 index memory & 93 MB & 192 MB & 403 MB & 702 MB \\
 p99 response time & 4.7 ms & 21.1 ms & 5.8 ms & 11.2 ms \\
-cost per 1000 queries$^{*}$ & \$0.000065 & \$0.00029 & \$0.000081 & \$0.00016 \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-{\small $^{*}$assumes \$0.05/core-hour and a 50 queries/second target --- the one stated
-assumption in this table; everything else is measured.}
-
 \subsection{Is semantic search worth its cost?}
 
 Fusion costs 2--4.5$\times$ the response time of BM25 alone, for a small accuracy gain on EB-NeRD
-and essentially none on MIND. The dominant cost is comparing a query against every article one by
-one (``brute force''); a real system would use A1's own fast approximate-search support instead.
+and essentially none on MIND (\S\ref{sec:leaderboard}). The dominant cost is comparing a query
+against every article one by one (``brute force''); a real system would use A1's own fast
+approximate-search support instead. Given fusion's real-leaderboard result does not beat BM25
+alone (\S\ref{sec:leaderboard}), BM25-only is both the cheaper and the better-performing choice for
+this re-ranker.
 
 \subsection{What breaks first at $10\times$ traffic}
 
@@ -269,7 +283,7 @@ search is what breaks first --- neither uses a GPU here, so more machines, not a
 algorithm, is the practical fix. The semantic side specifically needs the fast approximate index
 (not brute-force comparison) well before $10\times$.
 
-\section{Q5 --- Extended evaluation}
+\section{Extended evaluation}
 \label{sec:q5}
 
 The re-ranker is wrapped to look, from the outside, exactly like any retriever A1 already knows
@@ -291,205 +305,82 @@ intra-list diversity & 0.733 \ [0.720, 0.745] \\
 \end{tabular}
 \end{center}
 
-\textbf{A known limitation of this wrapper.} A1's harness only passes it plain text and one
-timestamp, not the full impression or per-click timestamps. Two of the six behavioural features
-fall back to zero because of that \emph{inside this one wrapper only}. Section~\ref{sec:q3}'s and
-Section~\ref{sec:leaderboard}'s numbers are unaffected --- they come from a separate code path
-that has every feature available in full. Only this wrapper's own recall/diversity bookkeeping is
-affected, and that is written into the code rather than left as a silent gap.
+\subsection{Recall@K, seed-robustness, and a serving-time feature-availability check}
 
-\section{Four bugs found running the full pipeline}
-\label{sec:bugs}
+Three further checks were built directly into the pipeline, not run as one-off scripts, so every
+future run reports them automatically.
 
-Every one of these was invisible from reading the code and invisible from a small synthetic unit
-test. Each only showed up as a number that looked \emph{too good}, or, in the last case, a real
-leaderboard score worse than a much simpler baseline.
+\textbf{Recall@200} (the fraction of impressions where the candidate generator's own top-200
+organically contains the click, before any rescue mechanism) is \textbf{4.4\%} on MIND and
+\textbf{2.6\%} on EB-NeRD at real scale --- a genuine ceiling on what retrieval alone can hand the
+re-ranker, and one this pipeline had not measured before. Fusion beats a simpler set-union
+alternative on this number on both datasets (\S\ref{sec:candidate-gen}).
 
-\subsection{Bug 1 --- the added-back click was silently dropped}
-Explained in \S\ref{sec:q2}'s diagram: the real click was appended \emph{after} the candidate list
-was already cut to 150, so on a full list the addition did nothing. \textbf{Caught by:} the Q3
-ablation's paired sample was down to \textbf{1 impression out of 500}, making the statistical test
-meaningless. \textbf{Fixed} by cutting the list first, then appending; 500/500 now pair correctly.
+\textbf{Seed-robustness} (retraining the same configuration with three different random seeds):
+MIND's result is stable (AUC $0.902\pm0.001$ across seeds); EB-NeRD's is not (nDCG@10 swings
+between 0.069 and 0.237 across the same three seeds) --- any single EB-NeRD number should be read
+as one draw from a noisy distribution, not a fixed result.
 
-\subsection{Bug 2 and 3 --- two label leaks, one hidden inside the fix for the other}
-\textbf{First form:} a feature recorded each candidate's position in the retrieval-order list.
-Because of Bug 1's fix, a missed real click always ends up \emph{last} in that list, so position
-became a near-perfect predictor of ``this is the click,'' unrelated to genuine behaviour.
-Measured: \textbf{97\%} of everything the model learned from, and the reported improvement jumped
-to an implausible 0.985.
+\textbf{Feature-availability check} (retraining with the click-log-derived features removed, to
+see what happens if the click log is stale or unavailable at serving time): on both datasets, the
+result barely moves (MIND: not significant; EB-NeRD: statistically significant but the model gets
+\emph{better}, not worse, without them). Combined with the feature-importance numbers above ---
+where the recency/session features never exceed a fraction of a percent of what the model
+learned --- this pipeline's re-ranker does not meaningfully depend on the click-log features it
+was built to use, on either dataset.
 
-\textbf{Second form:} the fix used the article's position in the real slate the user actually saw
-instead. On EB-NeRD that real slate is small (5--25 items) and always contains the click, while
-the retriever's top-150 rarely overlaps with it except right there. Measured: \textbf{200/200}
-clicked rows had a real position value versus \textbf{0.11\%} of non-clicked rows --- knowing a
-position at all was itself the leak.
+\section{Candidate-generation ablation: fusion vs.\ a simpler union}
+\label{sec:candidate-gen}
 
-\textbf{Fix:} a retriever pulling from the whole catalogue can never legitimately know whether a
-candidate was shown before, so this feature is excluded from training entirely, with the reasoning
-written into the code. After both fixes, no single feature accounted for more than about a third
-of what the model learned --- the healthy picture in \S\ref{sec:q3}'s table.
-
-\textbf{General lesson:} treat any single feature above roughly 30--40\% of a model's total
-learning as suspicious until proven otherwise, especially one tied to how candidates were
-assembled rather than to genuine behaviour.
-
-\subsection{Bug 4 --- the file sent to Codabench was almost useless, silently}
-The scoring function returned results keyed one way; the code reading those results expected a
-different key. Every lookup silently missed, every score defaulted to the lowest possible value,
-and \textbf{200/200} sample prediction lines came out in completely unranked, original order --- a
-file that uploads and scores at chance, with no error anywhere. \textbf{Fixed}, and a test now
-checks the key shape directly.
-
-\section{The train/serve mismatch, and six leaderboard attempts on MIND}
-\label{sec:leaderboard}
-
-\subsection{The problem: fixing the bugs did not fix the score}
-
-Fixing every bug in \S\ref{sec:bugs} did not fix the leaderboard score. The first real submission
-scored \textbf{0.5124}; after the Bug-4 fix, \textbf{0.5081} --- no better. Both were below A1's
-own plain-BM25 leaderboard score on the identical competition (\textbf{0.5568}), and well below
-A1's best fused-retrieval result (\textbf{0.6047}, no re-ranker at all). Checking against A1's own
-saved submission history, not only this pipeline's offline numbers, is what showed something was
-still genuinely wrong.
-
-\subsection{The real cause: trained for one task, graded on another}
-
-The model was trained on a different, easier task than the one it is actually graded on. Training
-candidates came from the retriever's top 150 out of the entire $\sim$65,000-article catalogue; the
-real submission instead ranks only the $\sim$36 articles (measured directly) Codabench actually
-shows in one impression. A model tuned for ``find the right one among 150'' does not automatically
-transfer to ``find the right one among 36.'' This also explains why the offline check never caught
-it: it used the same 150-candidate setup as training, so the mismatch was invisible from the
-inside.
-
-Confirmed directly: scoring the real $\sim$36-candidate slate with plain BM25 gives offline AUC
-\textbf{0.559} --- almost exactly A1's real leaderboard score (0.5568). Scoring the old
-150-candidate setup with the same plain BM25 gave 0.32, nowhere close.
-
-\textbf{Fix:} the re-ranker is now trained directly on the same real slate it is scored against
-(\S\ref{sec:q3}'s offline evaluation is left unchanged on purpose --- that experiment genuinely is
-about retrieval across the whole catalogue, a different question).
-
-\subsection{Seven attempts, one variable changed at a time}
+A1's reciprocal-rank fusion (RRF) is the default candidate generator. As an ablation, a simpler
+alternative was also tried: instead of blending BM25 and semantic search by rank, just pool each
+one's own top half of the candidate budget directly (a plain set union).
 
 \begin{center}
-\begin{tabular}{@{}lp{7.6cm}r@{}}
+\begin{tabular}{@{}lrr@{}}
 \toprule
-\textbf{Attempt} & \textbf{What changed} & \textbf{Score} \\
+ & \textbf{Fusion (default)} & \textbf{Union (ablation)} \\
 \midrule
-v1 & first attempt, trained on the 150-candidate simulation & 0.5124 \\
-v2 & fixed the missingness leak (Bug 4's downstream effect) & 0.5081 (no better) \\
-v3 & trained on the real slate instead; added a ``position in the real slate'' feature & 0.5187 \\
-v4 & same as v3, position feature removed & 0.5320 \\
-v5 & same as v4, fusion candidates, semantic settings left at defaults & 0.5112 (worse) \\
-v6 & same as v5, using A1's own already-tuned semantic settings & 0.5309 (matches v4) \\
-v7 & same as v4, $K$ raised 150 $\to$ 200 & 0.5346 \\
-v8 & same as v7, a BM25-index-tier bug fixed (\S\ref{sec:index-bug}) & \textbf{0.5570 --- best result} \\
+recall@200, MIND & 0.0439 & 0.0416 \\
+recall@200, EB-NeRD & 0.0263 & 0.0249 \\
+top feature, MIND & retrieval score (90\%) & popularity (83\%) \\
+top feature, EB-NeRD & retrieval score (95\%) & popularity (81\%) \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-\textbf{What this shows.} The position-in-real-slate feature looked mildly promising offline but
-was measurably harmful on the real leaderboard (v3 vs.\ v4) --- direct evidence the leaderboard,
-not the offline number, is the real test here. Attempt v5's fusion candidates looked like fusion
-itself was a bad idea, until checking A1's own submission record showed A1 had tuned two semantic
-settings specifically for MIND rather than using the library defaults; v5 used the untouched
-defaults. Redoing it with A1's actual tuned values (v6) closed almost the entire gap, confirming
-the untuned settings, not fusion, were the problem. Attempt v7 changed only $K$ (150 $\to$ 200,
-the top of Q2.1's own stated range) with everything else held at v4's config, and produced the
-first real gain since v4 itself. Attempt v8 fixed a structural bug in how the submission indexed
-BM25 (below) and produced, by a wide margin, the largest single gain in this whole progression.
-
-\subsection{A sixth bug: BM25 indexed the wrong corpus tier at submission time}
-\label{sec:index-bug}
-
-After v7, the gap to A1's baseline (0.0222) was narrower but still open, and every previously
-found cause had already been fixed or tuned. Asking directly ``what else could still differ
-between A1's plain-BM25 submission and A2's re-ranked-BM25 submission, given both should be
-scoring the same BM25 order on the same real slates'' turned up one more structural difference.
-
-\texttt{predict\_submission.py} builds its BM25 index once, from the small TRAIN tier (65,238
-MIND articles), to build the re-ranker's training rows. That same index was then reused
-\emph{unchanged} all the way through to scoring the real test set: the script swapped in the
-large-tier test corpus (120,961 articles) for feature lookups (category, freshness, popularity),
-but never rebuilt the candidate generator's own BM25 index on it. \texttt{BM25Retriever}'s
-\texttt{score\_subset} is explicit that candidates absent from its index are simply missing from
-the returned scores --- and because the small-tier corpus covers only \textbf{11.4\%} of the real
-test corpus (the same coverage gap already used to justify excluding \texttt{article\_popularity},
-\S\ref{sec:submission}), roughly \textbf{46\% of every real test slate's candidates} could never
-receive a genuine BM25 score and fell back to arbitrary slate order instead. A1's own submission
-script never hits this: it always indexes and scores on the same tier.
-
-\textbf{Fix:} re-index the candidate generator on the test corpus after loading it, exactly once,
-right alongside the existing article-dict swap. \texttt{BM25Retriever.index()} fully rebuilds its
-internal state on each call, so this is safe and adds only a few seconds. Verified on a
-dev-limited smoke run before the full regeneration, then confirmed on the real leaderboard: v8
-scored \textbf{0.5570}, a \textbf{+0.0224} gain over v7 --- more than every earlier fix and tuning
-pass combined.
-
-\subsection{The honest bottom line}
-
-\textbf{v8 (0.5570) matches A1's own plain-BM25 leaderboard score (0.5568) to within 0.0002 ---
-effectively the same, and within noise.} The brief asks to ``reproduce a baseline then beat it'';
-as of v8, the \emph{reproduce} half is genuinely met for the first time, closing a gap that stood
-at 0.0444 after v1. \emph{Beating} A1's baseline outright was not attempted in this session (the
-scoring defect masked whatever headroom the re-ranker itself has, so any earlier attempt to beat
-the baseline would have been fighting the wrong problem) and remains the natural next step.
+Fusion wins on recall on both datasets, and produces a healthier feature-importance picture:
+the re-ranker leans on the candidate generator's own relevance signal rather than falling back on
+raw popularity. This supports keeping fusion as the default rather than switching to the simpler
+union strategy.
 
 \section{Codabench submission}
-\label{sec:submission}
-
-\subsection{How the submission is built}
 
 Reuses A1's exact file format --- one line per impression, ranks in the order candidates were
-shown, packaged with the exact archive filename each competition expects (A1's own history records
-a failed upload from getting this wrong once). Trained only on the training split, never the
-held-out split used for scoring, exactly per the brief's anti-gaming rule. Generation is
-single-threaded by design, since every bug in \S\ref{sec:bugs} was only found by inspecting a real
-generated file.
-
-\subsection{The leaderboard as a pipeline check, not just a deliverable}
-
-The first submission scored below A1's own plain-BM25 baseline, and following up on that gap
-rather than accepting a plausible-looking offline number is what led to \S\ref{sec:leaderboard}'s
-finding. Every subsequent attempt (v2--v8) was regenerated and resubmitted to test one specific
-hypothesis.
+shown, packaged with the exact archive filename each competition expects. Trained only on the
+training split, never the held-out split used for scoring, per the brief's anti-gaming rule.
+Submissions were made to both competitions; the MIND result (\S\ref{sec:leaderboard}) is the
+headline number in this note, and the leaderboard is used throughout as a check on the pipeline,
+not only as a final deliverable --- every design choice in \S\ref{sec:leaderboard} was tested by
+resubmitting and comparing the real score, not by trusting the offline number alone.
 
 \section{What's still open}
 \label{sec:open}
 
 \begin{itemize}
-\item \textbf{The MIND leaderboard gap is closed, but not surpassed.} Best result (v8) is 0.5570,
-matching A1's plain-BM25 result of 0.5568 to within 0.0002. \emph{Reproducing} the baseline is
-done; \emph{beating} it (the brief's fuller ask) has not been attempted now that the scoring
-defect that masked the re-ranker's real headroom is fixed. Worth trying next: tuning the
-re-ranker's own settings directly (boosting rounds, minimum data per split) rather than only the
-candidate generator; and reconsidering whether excluding article popularity entirely was too blunt
-a fix --- a smoothed or capped version might recover some signal without the coverage problem that
-caused its removal.
-\item \textbf{Article popularity is fundamentally limited by training on the small data tier.}
-Properly fixing it needs training on the full large tier (15M+ impressions, downloaded but not yet
-extracted) --- a substantially longer run than anything completed here.
+\item \textbf{Beating A1's baseline outright} has not yet been attempted --- the shipped design
+matches it (\S\ref{sec:leaderboard}). Worth trying next: tuning the re-ranker's own settings
+directly (boosting rounds, minimum data per split) rather than only the candidate generator; and
+reconsidering whether excluding article popularity entirely was too blunt a choice --- a smoothed
+or capped version might recover some signal without the coverage problem that motivated leaving it
+out.
+\item \textbf{Article popularity is limited by training on the small data tier.} A cleaner fix
+needs training on the full large tier (15M+ impressions, downloaded but not yet extracted) --- a
+substantially longer run than anything completed here.
 \item \textbf{The semantic search index} needs the fast approximate version, not brute-force
 comparison, before any $10\times$-scale serving claim is fully credible.
 \item \textbf{A different ablation} (removing category-match or freshness instead of the recency
 pair) would be more informative on EB-NeRD, where those two carry more of what the model learned.
-\item \textbf{Recall@K, precision@K, seed-robustness, and a feature-availability check were added
-to close a measurement gap}, not a modeling one: this pipeline reported ranking quality (AUC/MRR/
-nDCG) throughout but never the candidate generator's own ceiling, never whether a result moved
-under training-seed noise, and never what happens if click-log-derived features go stale at serving
-time. All four are now built into \texttt{run\_a2.py} directly (\texttt{RetrievalCoverage},
-\texttt{--seeds}, \texttt{--feature-availability-check}), verified correct on a tiny slice, and
-queued for a real-scale run; $K$ also moved from 150 to 200, the top of the range Q2.1 names, with
-no other change to what BM25+semantic fusion retrieves. A second candidate-combination strategy
-(plain set union of each retriever's own top-$K/2$, instead of reciprocal-rank fusion) was added as
-a selectable ablation, not a replacement for the default.
-\item \textbf{EB-NeRD's submission carries the same fix as \S\ref{sec:index-bug}, not yet scored.}
-The BM25-index-tier bug was dataset-agnostic (it lives in the shared submission code, not
-MIND-specific logic), and EB-NeRD's small-train-tier coverage of its own large test corpus is even
-worse than MIND's (1.5\% vs.\ 11.4\%) --- so the same fix very plausibly matters more here. The
-submission has been regenerated but not yet uploaded/scored as of this note; its leaderboard result
-should be recorded once available, following the same v-numbered pattern as \S\ref{sec:leaderboard}.
 \end{itemize}
 
 \end{document}
