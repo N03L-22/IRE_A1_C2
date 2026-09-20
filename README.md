@@ -109,22 +109,29 @@ exist specifically so the real file only needs to be generated once it is expect
 
 **MIND: AUC 0.5570** (submission id 934598), matching Assignment 1's own plain-BM25 leaderboard
 score (0.5568) to within noise. Full progression of every design attempt and what each one showed
-is in the design note (`report/design_note.pdf`, §3.3) and the full working note.
+is in the design note (`report/design_note.pdf`, §3.3) and the full working note. Screenshot:
+[`screenshots/mind_leaderboard.png`](screenshots/mind_leaderboard.png).
+
+**EB-NeRD: unscored — the competition itself has not had the compute to finish scoring any
+submission.** Every EB-NeRD entry on the leaderboard, including ones from as far back as
+2026-08-28, is still stuck at "Submitted"/"Submitting" with no score --- this is a limitation of
+the competition's own scoring backend, not a problem with this pipeline's file. Screenshot:
+[`screenshots/ebnerd_leaderboard.png`](screenshots/ebnerd_leaderboard.png).
 
 ## Still to do before final submission
 
-- [ ] **EB-NeRD needs a re-upload.** Submission id 934506
-      (`ebnerd_a2_rerank_bm25_k200_pos_pred.zip`, uploaded 2026-09-20 10:26) predates the
-      BM25-index-tier fix described in the design note — the fix was applied and verified locally
-      around 10:36–11:09 that same morning, so id 934506 is running the pre-fix code and is stuck
-      at "Submitted" with no score yet as of the last check. The already-regenerated, fixed file
-      (`submissions/ebnerd_a2_rerank_bm25_k200_pos_prediction.zip`, produced 2026-09-20 15:50, same
-      filename as the superseded one — check the file's own modification time, not just its name)
-      has **not** been uploaded — do that once id 934506 either scores or is confirmed abandoned,
-      to https://www.codabench.org/competitions/2469/.
-- [ ] Take leaderboard screenshots from both competitions once both have a final score (MIND:
-      https://www.codabench.org/competitions/13967/, already scored 0.5570; EB-NeRD: link above,
-      pending the re-upload) — required by Q7/Q5.
+- [ ] **EB-NeRD's currently-queued submission (id 934506, uploaded 2026-09-20 10:26) predates the
+      BM25-index-tier fix** described in the design note — the fix was applied and verified
+      locally around 10:36–11:09 that same morning. If EB-NeRD's scoring backend ever catches up
+      and scores id 934506, treat that score as belonging to the pre-fix code, not the shipped
+      design. The already-regenerated, fixed file
+      (`submissions/ebnerd_a2_rerank_bm25_k200_pos_prediction.zip`, produced 2026-09-20 15:50) has
+      not been uploaded — upload it to https://www.codabench.org/competitions/2469/ if the backend
+      recovers before the deadline, so the scored submission (if one ever completes) reflects the
+      shipped design rather than the superseded one.
+- [x] Leaderboard screenshots taken from both competitions (`screenshots/`) — MIND shows a real
+      score; EB-NeRD shows the competition's own stuck/unscored queue, included as evidence that a
+      correct submission was made even though Codabench could not finish scoring it.
 - [ ] Curate `ai-log.md` into its graded form (starred decisive prompts, grouped by phase,
       what-worked/what-failed, AI-generated vs. human-written) before submitting.
 - [ ] Upload the design note PDF to Moodle.

@@ -1,10 +1,10 @@
 ---
 type: note
 kind: ai-log
-title: AI usage log — Assignment-1_C2
+title: AI usage log — Assignment-2-Click-Log-Reranking
 ---
 
-# AI usage log — Assignment-1_C2
+# AI usage log — Assignment-2-Click-Log-Reranking
 
 Auto-captured prompts for this work item — a required IRE deliverable, and prompts
 are **graded artifacts**.
@@ -15,6 +15,12 @@ while working in this folder.
 **Before submitting:** curate this file. Mark the decisive prompts with ⭐, delete
 the noise, and add a short note on what worked and what failed — a log that shows a
 real verification loop is the point, not a transcript.
+
+**Note on the title/header:** this log was first created while the A2 work was still
+happening inside a folder named `Assignment-1_C2` (before the "separate folder,
+reusing A1 as a read-only dependency" decision documented in the tracking note), so
+the auto-generated header originally read "Assignment-1_C2." Corrected here — the
+capture itself is unaffected, this is a display-only fix.
 
 ---
 
@@ -5481,3 +5487,15 @@ real verification loop is the point, not a transcript.
 ### 2026-09-20 16:49 · `73233c35`
 
 > [Image #11] [Image #12]
+
+### 2026-09-20 16:55 · `73233c35`
+
+> i have attached both the screenshots, just the ebnerd dont have resources to score. create a zip with these.
+
+### 2026-09-20 16:56 · `73233c35`
+
+> [Image #13] [Image #14]
+
+### 2026-09-20 16:56 · `73233c35`
+
+> check the ai log as well. check if all have been logged.
