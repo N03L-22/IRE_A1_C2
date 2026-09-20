@@ -1,0 +1,24 @@
+# A2 -- pinned environment (Q7: the grader must be able to rebuild).
+#
+# Setup:
+#     python3 -m venv --system-site-packages .venv
+#     .venv/bin/pip install -r requirements.txt
+#
+# Everything from A1's requirements.txt at the same pins, plus lightgbm for
+# the Q2 re-ranker. A1's own environment is never modified -- this is a
+# separate venv, not a shared one, so a GBDT dependency A1 never needed does
+# not leak backwards into its (already-graded) submission.
+#
+# --system-site-packages, same reasoning as A1: torch is inherited from the
+# dev machine's global site-packages rather than reinstalled.
+
+polars==1.43.2
+pyarrow==24.0.0
+numpy==1.26.4
+scipy==1.11.4
+scikit-learn==1.8.0
+pytest==9.0.3
+psutil==5.9.8
+bm25s==0.3.10
+faiss-cpu==1.11.0
+lightgbm==4.7.0

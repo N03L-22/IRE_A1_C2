@@ -1,0 +1,43 @@
+# Data — never commit
+/data/
+*.zip
+*.parquet
+
+# Models / checkpoints
+*.pt
+*.ckpt
+*.bin
+*.safetensors
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+.pytest_cache/
+
+# OS / editor
+.DS_Store
+
+# Reference material for internal comparison only -- a teammate's notebook
+# and another team's design note. Never published: not this repo's own work
+# to redistribute, and (for design_note_a2.pdf specifically) explicitly not
+# to be cited or referenced anywhere in this pipeline's own deliverables.
+/reference/
+
+# Prediction files -- hundreds of MB, regenerable via
+# scripts/predict_submission.py. The .meta.json beside each IS tracked: it
+# records the candidate generator, K, tier and line count that produced the
+# file, which is what makes a leaderboard score traceable (same convention
+# as Assignment-1-Lexical-Semantic-Retrieval/.gitignore).
+submissions/*.txt
+submissions/*.zip
+
+# LaTeX build artefacts -- the .tex and .pdf are tracked, the rest is derived.
+report/*.aux
+report/*.log
+report/*.out
+report/*.toc
+
+# Embedding cache -- lives under A1, not duplicated here.

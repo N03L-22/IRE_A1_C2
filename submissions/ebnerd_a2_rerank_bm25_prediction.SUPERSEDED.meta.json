@@ -1,0 +1,13 @@
+{
+  "dataset": "ebnerd",
+  "candidate_generator": "bm25",
+  "train_tier": "small",
+  "train_limit": 209597,
+  "test_tier": "testset",
+  "dev_limit": null,
+  "generated_at": "2026-09-18T22:51:21",
+  "lines": 13336711,
+  "cold_slates": 0,
+  "seconds": 8555.2,
+  "bytes": 523863118
+}

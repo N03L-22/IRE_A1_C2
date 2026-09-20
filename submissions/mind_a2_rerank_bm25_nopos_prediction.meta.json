@@ -1,0 +1,13 @@
+{
+  "dataset": "mind",
+  "candidate_generator": "bm25",
+  "train_tier": "small",
+  "train_limit": 141265,
+  "test_tier": "large",
+  "dev_limit": null,
+  "generated_at": "2026-09-19T14:10:24",
+  "lines": 2370727,
+  "cold_slates": 29108,
+  "seconds": 2608.2,
+  "bytes": 291329312
+}

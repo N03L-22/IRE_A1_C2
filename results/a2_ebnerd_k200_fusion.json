@@ -1,0 +1,750 @@
+{
+  "dataset": "ebnerd",
+  "tier": "small",
+  "n_articles": 20738,
+  "n_train_impressions": 120000,
+  "n_val_impressions": 8000,
+  "candidate_generator": "bm25+semantic",
+  "bm25_params": {
+    "k1": 1.6,
+    "b": 1.0,
+    "last_n": 15
+  },
+  "candidate_generator_index_memory_mb": 191.51171875,
+  "rerank_train_rows": 12058577,
+  "rerank_val_rows": 1318468,
+  "top_k": 200,
+  "recall_at_k": {
+    "k": 200,
+    "recall": 0.026292067307692308,
+    "precision": 0.00013146033653846107,
+    "impressions_with_click_retrieved": 1750,
+    "impressions_checked": 66560
+  },
+  "seed_repetition": {
+    "seeds": [
+      1,
+      2,
+      3
+    ],
+    "auc_per_seed": [
+      0.9285051183253666,
+      0.9488166250459614,
+      0.9071640723944928
+    ],
+    "ndcg10_per_seed": [
+      0.1374095554979435,
+      0.2373581019020844,
+      0.06925514499407973
+    ],
+    "auc": {
+      "mean": 0.928161938588607,
+      "sd": 0.017006314804499986
+    },
+    "ndcg10": {
+      "mean": 0.14800760079803588,
+      "sd": 0.06903569102737475
+    }
+  },
+  "feature_importance": [
+    [
+      "retrieval_score",
+      0.9493337124993644
+    ],
+    [
+      "article_popularity",
+      0.026931295012027942
+    ],
+    [
+      "freshness_hours",
+      0.022943779955960048
+    ],
+    [
+      "recency_weighted_click_count",
+      0.0004577621888815696
+    ],
+    [
+      "history_click_count",
+      0.0002473952351517107
+    ],
+    [
+      "session_click_count",
+      8.211078116861806e-05
+    ],
+    [
+      "category_match",
+      3.944327445785506e-06
+    ]
+  ],
+  "before_after": {
+    "before_base_retriever_score": {
+      "auc": 0.01568471102974221,
+      "mrr": 0.005416279106018614,
+      "ndcg5": 0.0002685761443815419,
+      "ndcg10": 0.0003674783105582282,
+      "n": 6560
+    },
+    "after_reranker": {
+      "auc": 0.8972950397311762,
+      "mrr": 0.10341781318863583,
+      "ndcg5": 0.054180154701872506,
+      "ndcg10": 0.06398338592517945,
+      "n": 6560
+    }
+  },
+  "nrms_lite": {
+    "epoch_losses": [
+      2.227602419769764,
+      2.226060100543499,
+      2.2254542390922705
+    ],
+    "n_train_examples": 60000,
+    "val_ndcg10_mean": 0.46056949440255956,
+    "n_val_scored": 6560
+  },
+  "ablation": {
+    "metric": "ndcg10",
+    "excluded_features": [
+      "recency_weighted_click_count",
+      "history_click_count"
+    ],
+    "n_paired_impressions": 6560,
+    "full_mean": 0.06398338592517945,
+    "ablated_mean": 0.08223592158347684,
+    "mean_diff": -0.018252535658297386,
+    "ci_low": -0.019928122093182166,
+    "ci_high": -0.01636735346366323,
+    "significant": true
+  },
+  "feature_availability_check": {
+    "metric": "ndcg10",
+    "excluded_features": [
+      "recency_weighted_click_count",
+      "history_click_count",
+      "session_click_count"
+    ],
+    "n_paired_impressions": 6560,
+    "full_mean": 0.06398338592517945,
+    "ablated_mean": 0.06719867537952702,
+    "mean_diff": -0.0032152894543475584,
+    "ci_low": -0.0044352877852105,
+    "ci_high": -0.0020232842864181793,
+    "significant": true
+  },
+  "serving_latency_ms": {
+    "n": 150,
+    "p50_ms": 9.265244007110596,
+    "p90_ms": 11.838000966235995,
+    "p99_ms": 13.964515994302928,
+    "max_ms": 14.389744028449059,
+    "mean_ms": 8.753211765627688
+  },
+  "cost_per_1000_queries": {
+    "p99_ms": 13.964515994302928,
+    "max_qps_per_core": 71.61007230096394,
+    "target_qps": 50.0,
+    "cores_needed": 0.6982257997151464,
+    "hourly_cost_per_core_usd": 0.05,
+    "cost_per_1000_queries_usd": 0.00019395161103198514
+  },
+  "q5_extended_eval": [
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "all",
+      "metric": "recall@50",
+      "regime": "corpus",
+      "value": 0.004573170731707317,
+      "ci_low": 0.003044969512195122,
+      "ci_high": 0.006097560975609756,
+      "n_impressions": 6560,
+      "features": "serving_only",
+      "slice_basis": "all evaluated impressions"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "all",
+      "metric": "recall@100",
+      "regime": "corpus",
+      "value": 0.004878048780487805,
+      "ci_low": 0.0032012195121951218,
+      "ci_high": 0.0065548780487804876,
+      "n_impressions": 6560,
+      "features": "serving_only",
+      "slice_basis": "all evaluated impressions"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "all",
+      "metric": "recall@200",
+      "regime": "corpus",
+      "value": 0.01758130081300813,
+      "ci_low": 0.014380081300813008,
+      "ci_high": 0.020579268292682928,
+      "n_impressions": 6560,
+      "features": "serving_only",
+      "slice_basis": "all evaluated impressions"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "all",
+      "metric": "auc",
+      "regime": "slate",
+      "value": 0.5009050250937112,
+      "ci_low": 0.49341659791726744,
+      "ci_high": 0.5084622495791654,
+      "n_impressions": 6560,
+      "features": "serving_only",
+      "slice_basis": "all evaluated impressions"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "all",
+      "metric": "mrr",
+      "regime": "slate",
+      "value": 0.3144054799899615,
+      "ci_low": 0.30743326859451486,
+      "ci_high": 0.3212549205596484,
+      "n_impressions": 6560,
+      "features": "serving_only",
+      "slice_basis": "all evaluated impressions"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "all",
+      "metric": "ndcg@5",
+      "regime": "slate",
+      "value": 0.3433090169238216,
+      "ci_low": 0.33554530842445746,
+      "ci_high": 0.3514663727153857,
+      "n_impressions": 6560,
+      "features": "serving_only",
+      "slice_basis": "all evaluated impressions"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "all",
+      "metric": "ndcg@10",
+      "regime": "slate",
+      "value": 0.4302923421802439,
+      "ci_low": 0.4241043799602999,
+      "ci_high": 0.43704766229385567,
+      "n_impressions": 6560,
+      "features": "serving_only",
+      "slice_basis": "all evaluated impressions"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "all",
+      "metric": "diversity",
+      "regime": "corpus",
+      "value": 0.6702900861012379,
+      "ci_low": 0.6671399223633412,
+      "ci_high": 0.6733761712526046,
+      "n_impressions": 6560,
+      "features": "serving_only",
+      "slice_basis": "all evaluated impressions"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "all",
+      "metric": "novelty",
+      "regime": "corpus",
+      "value": 8.838013768160554,
+      "ci_low": 8.833407653185406,
+      "ci_high": 8.842506759930037,
+      "n_impressions": 6560,
+      "features": "serving_only",
+      "slice_basis": "all evaluated impressions"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "all",
+      "metric": "coverage",
+      "regime": "corpus",
+      "value": 0.6902787154016781,
+      "ci_low": NaN,
+      "ci_high": NaN,
+      "n_impressions": 6560,
+      "features": "serving_only",
+      "slice_basis": "all evaluated impressions"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "cold",
+      "metric": "recall@50",
+      "regime": "corpus",
+      "value": 0.00426049908703591,
+      "ci_low": 0.0012172854534388314,
+      "ci_high": 0.007912355447352405,
+      "n_impressions": 1643,
+      "features": "serving_only",
+      "slice_basis": "history length <= 118 (q0.25 of observed; median 254, min 5, max 1161)"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "cold",
+      "metric": "recall@100",
+      "regime": "corpus",
+      "value": 0.005477784540474742,
+      "ci_low": 0.002434570906877663,
+      "ci_high": 0.009144856968959208,
+      "n_impressions": 1643,
+      "features": "serving_only",
+      "slice_basis": "history length <= 118 (q0.25 of observed; median 254, min 5, max 1161)"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "cold",
+      "metric": "recall@200",
+      "regime": "corpus",
+      "value": 0.018867924528301886,
+      "ci_low": 0.01278149726110773,
+      "ci_high": 0.026171637248934874,
+      "n_impressions": 1643,
+      "features": "serving_only",
+      "slice_basis": "history length <= 118 (q0.25 of observed; median 254, min 5, max 1161)"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "cold",
+      "metric": "mrr",
+      "regime": "slate",
+      "value": 0.3068099447855103,
+      "ci_low": 0.29340969637053604,
+      "ci_high": 0.3205193207657045,
+      "n_impressions": 1643,
+      "features": "serving_only",
+      "slice_basis": "history length <= 118 (q0.25 of observed; median 254, min 5, max 1161)"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "cold",
+      "metric": "ndcg@5",
+      "regime": "slate",
+      "value": 0.3314023756356942,
+      "ci_low": 0.31445731320193976,
+      "ci_high": 0.34799690898018065,
+      "n_impressions": 1643,
+      "features": "serving_only",
+      "slice_basis": "history length <= 118 (q0.25 of observed; median 254, min 5, max 1161)"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "cold",
+      "metric": "ndcg@10",
+      "regime": "slate",
+      "value": 0.42157513787987444,
+      "ci_low": 0.4079112026035342,
+      "ci_high": 0.4353598238495385,
+      "n_impressions": 1643,
+      "features": "serving_only",
+      "slice_basis": "history length <= 118 (q0.25 of observed; median 254, min 5, max 1161)"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "cold",
+      "metric": "diversity",
+      "regime": "corpus",
+      "value": 0.668341066256419,
+      "ci_low": 0.6616168227014562,
+      "ci_high": 0.6749593195741336,
+      "n_impressions": 1643,
+      "features": "serving_only",
+      "slice_basis": "history length <= 118 (q0.25 of observed; median 254, min 5, max 1161)"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "cold",
+      "metric": "novelty",
+      "regime": "corpus",
+      "value": 8.92252602326898,
+      "ci_low": 8.912929721238852,
+      "ci_high": 8.932458098107727,
+      "n_impressions": 1643,
+      "features": "serving_only",
+      "slice_basis": "history length <= 118 (q0.25 of observed; median 254, min 5, max 1161)"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "cold",
+      "metric": "coverage",
+      "regime": "corpus",
+      "value": 0.5986112450573826,
+      "ci_low": NaN,
+      "ci_high": NaN,
+      "n_impressions": 1643,
+      "features": "serving_only",
+      "slice_basis": "history length <= 118 (q0.25 of observed; median 254, min 5, max 1161)"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "warm",
+      "metric": "recall@50",
+      "regime": "corpus",
+      "value": 0.004677648972950987,
+      "ci_low": 0.002847264592231035,
+      "ci_high": 0.006711409395973154,
+      "n_impressions": 4917,
+      "features": "serving_only",
+      "slice_basis": "history length > 118"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "warm",
+      "metric": "recall@100",
+      "regime": "corpus",
+      "value": 0.004677648972950987,
+      "ci_low": 0.002847264592231035,
+      "ci_high": 0.006711409395973154,
+      "n_impressions": 4917,
+      "features": "serving_only",
+      "slice_basis": "history length > 118"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "warm",
+      "metric": "recall@200",
+      "regime": "corpus",
+      "value": 0.017151379567486948,
+      "ci_low": 0.013626194834248526,
+      "ci_high": 0.02094773235712833,
+      "n_impressions": 4917,
+      "features": "serving_only",
+      "slice_basis": "history length > 118"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "warm",
+      "metric": "mrr",
+      "regime": "slate",
+      "value": 0.316943504057668,
+      "ci_low": 0.3092309834422312,
+      "ci_high": 0.32465268461695973,
+      "n_impressions": 4917,
+      "features": "serving_only",
+      "slice_basis": "history length > 118"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "warm",
+      "metric": "ndcg@5",
+      "regime": "slate",
+      "value": 0.3472875834555265,
+      "ci_low": 0.33791445604358306,
+      "ci_high": 0.35689168964221024,
+      "n_impressions": 4917,
+      "features": "serving_only",
+      "slice_basis": "history length > 118"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "warm",
+      "metric": "ndcg@10",
+      "regime": "slate",
+      "value": 0.4332051684290759,
+      "ci_low": 0.4257337663945104,
+      "ci_high": 0.4413349565570743,
+      "n_impressions": 4917,
+      "features": "serving_only",
+      "slice_basis": "history length > 118"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "warm",
+      "metric": "diversity",
+      "regime": "corpus",
+      "value": 0.6709413449186138,
+      "ci_low": 0.6674063979650132,
+      "ci_high": 0.6746294539608761,
+      "n_impressions": 4917,
+      "features": "serving_only",
+      "slice_basis": "history length > 118"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "warm",
+      "metric": "novelty",
+      "regime": "corpus",
+      "value": 8.809774265385869,
+      "ci_low": 8.804780272342287,
+      "ci_high": 8.814567153914469,
+      "n_impressions": 4917,
+      "features": "serving_only",
+      "slice_basis": "history length > 118"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "warm",
+      "metric": "coverage",
+      "regime": "corpus",
+      "value": 0.5710290288359533,
+      "ci_low": NaN,
+      "ci_high": NaN,
+      "n_impressions": 4917,
+      "features": "serving_only",
+      "slice_basis": "history length > 118"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "head",
+      "metric": "recall@50",
+      "regime": "corpus",
+      "value": 0.03319502074688797,
+      "ci_low": 0.012448132780082987,
+      "ci_high": 0.058091286307053944,
+      "n_impressions": 241,
+      "features": "serving_only",
+      "slice_basis": "max train popularity of clicked article > 0.0381 (q0.5)"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "head",
+      "metric": "recall@100",
+      "regime": "corpus",
+      "value": 0.03319502074688797,
+      "ci_low": 0.012448132780082987,
+      "ci_high": 0.058091286307053944,
+      "n_impressions": 241,
+      "features": "serving_only",
+      "slice_basis": "max train popularity of clicked article > 0.0381 (q0.5)"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "head",
+      "metric": "recall@200",
+      "regime": "corpus",
+      "value": 0.03319502074688797,
+      "ci_low": 0.012448132780082987,
+      "ci_high": 0.058091286307053944,
+      "n_impressions": 241,
+      "features": "serving_only",
+      "slice_basis": "max train popularity of clicked article > 0.0381 (q0.5)"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "head",
+      "metric": "mrr",
+      "regime": "slate",
+      "value": 0.2711104800868688,
+      "ci_low": 0.23789639918646882,
+      "ci_high": 0.30687930599922375,
+      "n_impressions": 241,
+      "features": "serving_only",
+      "slice_basis": "max train popularity of clicked article > 0.0381 (q0.5)"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "head",
+      "metric": "ndcg@5",
+      "regime": "slate",
+      "value": 0.2707420101474554,
+      "ci_low": 0.22712431024759794,
+      "ci_high": 0.3139415452533864,
+      "n_impressions": 241,
+      "features": "serving_only",
+      "slice_basis": "max train popularity of clicked article > 0.0381 (q0.5)"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "head",
+      "metric": "ndcg@10",
+      "regime": "slate",
+      "value": 0.36186392933872624,
+      "ci_low": 0.3259392610713762,
+      "ci_high": 0.4003228278049007,
+      "n_impressions": 241,
+      "features": "serving_only",
+      "slice_basis": "max train popularity of clicked article > 0.0381 (q0.5)"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "head",
+      "metric": "diversity",
+      "regime": "corpus",
+      "value": 0.6962707729518964,
+      "ci_low": 0.6809867386726162,
+      "ci_high": 0.710965022206468,
+      "n_impressions": 241,
+      "features": "serving_only",
+      "slice_basis": "max train popularity of clicked article > 0.0381 (q0.5)"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "head",
+      "metric": "novelty",
+      "regime": "corpus",
+      "value": 8.891160141393385,
+      "ci_low": 8.868776719119522,
+      "ci_high": 8.911801781418303,
+      "n_impressions": 241,
+      "features": "serving_only",
+      "slice_basis": "max train popularity of clicked article > 0.0381 (q0.5)"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "head",
+      "metric": "coverage",
+      "regime": "corpus",
+      "value": 0.3402449609412672,
+      "ci_low": NaN,
+      "ci_high": NaN,
+      "n_impressions": 241,
+      "features": "serving_only",
+      "slice_basis": "max train popularity of clicked article > 0.0381 (q0.5)"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "tail",
+      "metric": "recall@50",
+      "regime": "corpus",
+      "value": 0.003481563538534578,
+      "ci_low": 0.0022155404336129136,
+      "ci_high": 0.00506409241968666,
+      "n_impressions": 6319,
+      "features": "serving_only",
+      "slice_basis": "clicked article at or below q0.5"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "tail",
+      "metric": "recall@100",
+      "regime": "corpus",
+      "value": 0.0037980693147649943,
+      "ci_low": 0.0023737933217281215,
+      "ci_high": 0.005380598195917075,
+      "n_impressions": 6319,
+      "features": "serving_only",
+      "slice_basis": "clicked article at or below q0.5"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "tail",
+      "metric": "recall@200",
+      "regime": "corpus",
+      "value": 0.016985809991032337,
+      "ci_low": 0.014241441156301103,
+      "ci_high": 0.02025636967874664,
+      "n_impressions": 6319,
+      "features": "serving_only",
+      "slice_basis": "clicked article at or below q0.5"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "tail",
+      "metric": "mrr",
+      "regime": "slate",
+      "value": 0.316056705654884,
+      "ci_low": 0.3089360531752314,
+      "ci_high": 0.32328285974732696,
+      "n_impressions": 6319,
+      "features": "serving_only",
+      "slice_basis": "clicked article at or below q0.5"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "tail",
+      "metric": "ndcg@5",
+      "regime": "slate",
+      "value": 0.34607664607924243,
+      "ci_low": 0.3375765386442871,
+      "ci_high": 0.3544168039705648,
+      "n_impressions": 6319,
+      "features": "serving_only",
+      "slice_basis": "clicked article at or below q0.5"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "tail",
+      "metric": "ndcg@10",
+      "regime": "slate",
+      "value": 0.43290212972491965,
+      "ci_low": 0.42569003514104564,
+      "ci_high": 0.43986012147246306,
+      "n_impressions": 6319,
+      "features": "serving_only",
+      "slice_basis": "clicked article at or below q0.5"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "tail",
+      "metric": "diversity",
+      "regime": "corpus",
+      "value": 0.6692992100874685,
+      "ci_low": 0.6661510088422806,
+      "ci_high": 0.6722898137228317,
+      "n_impressions": 6319,
+      "features": "serving_only",
+      "slice_basis": "clicked article at or below q0.5"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "tail",
+      "metric": "novelty",
+      "regime": "corpus",
+      "value": 8.835986821499832,
+      "ci_low": 8.831380338667383,
+      "ci_high": 8.840772515986897,
+      "n_impressions": 6319,
+      "features": "serving_only",
+      "slice_basis": "clicked article at or below q0.5"
+    },
+    {
+      "dataset": "ebnerd",
+      "retriever": "rerank(rrf(bm25+semantic))",
+      "slice": "tail",
+      "metric": "coverage",
+      "regime": "corpus",
+      "value": 0.6873854759378918,
+      "ci_low": NaN,
+      "ci_high": NaN,
+      "n_impressions": 6319,
+      "features": "serving_only",
+      "slice_basis": "clicked article at or below q0.5"
+    }
+  ]
+}
