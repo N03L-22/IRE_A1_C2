@@ -5445,3 +5445,31 @@ real verification loop is the point, not a transcript.
 ### 2026-09-20 16:32 · `73233c35`
 
 > does the design note have to be 6 pages? if not add some more details. to 9 pages. expand and simplify
+
+### 2026-09-20 16:33 · `73233c35`
+
+> its mentioned 6. so lets stick to 6 and based on explicitly whats mentioned there in the design note
+
+### 2026-09-20 16:34 · `73233c35`
+
+> continue to add if details, design choices. and also have we check for the 10x scale? or checked what are possible breaks?
+
+### 2026-09-20 16:34 · `73233c35`
+
+> make sure the AI logs are also added.
+
+### 2026-09-20 16:37 · `73233c35`
+
+> Noel Alex Jacob 2025201085 and Emil Joji 2025201040
+
+### 2026-09-20 16:38 · `73233c35`
+
+> dont put the whats left section.
+
+### 2026-09-20 16:39 · `73233c35`
+
+> but have a explanation of what breaks at 10x
+
+### 2026-09-20 16:39 · `73233c35`
+
+> remove codabench submission
