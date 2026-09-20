@@ -5473,3 +5473,11 @@ real verification loop is the point, not a transcript.
 ### 2026-09-20 16:39 · `73233c35`
 
 > remove codabench submission
+
+### 2026-09-20 16:48 · `73233c35`
+
+> create a submissions package as required before moving to the next task
+
+### 2026-09-20 16:49 · `73233c35`
+
+> [Image #11] [Image #12]
